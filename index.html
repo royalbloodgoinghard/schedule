@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Расписание ЗС-51</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #0b0b0f; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+  }
+  .container {
+    padding: calc(25px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom));
+    max-width: 640px; margin: 0 auto;
+  }
+  .header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 12px; margin-bottom: 20px;
+  }
+  .header-left { flex: 1; min-width: 0; }
+  .date-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .date { font-size: 26px; font-weight: 700; letter-spacing: -0.4px; color: #fff; line-height: 1; }
+  .count {
+    font-size: 12px; font-weight: 600; color: #a1a1aa;
+    background: #1c1c22; border: 1px solid #2c2c36;
+    padding: 4px 9px; border-radius: 9px; line-height: 1;
+    display: inline-flex; align-items: center;
+    transition: transform 0.25s ease, color 0.25s ease;
+  }
+  .count.tick { animation: countTick 0.4s ease; }
+  @keyframes countTick {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+  .count.empty {
+    color: #4ade80;
+    animation: emptyPulse 2.4s ease-in-out infinite;
+  }
+  @keyframes emptyPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+    50% { box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.18); }
+  }
+  .subheader { margin-top: 6px; font-size: 14px; color: #8e8e93; }
+  .header-right { display: flex; flex-direction: row; gap: 8px; align-items: flex-start; }
+  .left-btns {
+    display: flex; flex-direction: column; gap: 6px; align-items: center;
+  }
+  .nav-column { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  .nav-btn {
+    background: #1c1c22; border: 1px solid #2c2c36;
+    color: #4ade80; font-size: 13px; font-weight: 600;
+    padding: 8px 12px; border-radius: 10px;
+    cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .nav-btn:active { background: #2c2c36; }
+  .nav-btn.hidden { display: none; }
+  .nav-btn.prev-btn { color: #fbbf24; }
+
+  .square-btn {
+    position: relative;
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: #1c1c22; border: 1px solid #2c2c36;
+    color: #a1a1aa;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-family: inherit; padding: 0;
+    transition: transform 0.1s ease, background 0.2s ease,
+                border-color 0.4s ease, color 0.4s ease;
+  }
+  .square-btn:active { transform: scale(0.92); background: #2c2c36; }
+  .square-btn.hidden { display: none; }
+  .square-btn .fab-svg { width: 17px; height: 17px; display: block; }
+
+  .exams-btn.green  { color: #22c55e; border-color: rgba(34, 197, 94, 0.4); }
+  .exams-btn.yellow { color: #eab308; border-color: rgba(234, 179, 8, 0.4); }
+  .exams-btn.orange { color: #f59e0b; border-color: rgba(245, 158, 11, 0.45); }
+  .exams-btn.red    { color: #ef4444; border-color: rgba(239, 68, 68, 0.5); }
+  .exams-btn.critical {
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.6);
+  }
+  .exams-btn.critical::after {
+    content: '';
+    position: absolute; top: -3px; right: -3px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.75);
+    animation: dotPulse 1.8s infinite;
+  }
+  @keyframes dotPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.75); }
+    70%  { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  }
+
+  .links-btn { color: #a78bfa; }
+  .links-btn:active { color: #c4b5fd; }
+
+  .content { }
+  .card {
+    position: relative;
+    background: linear-gradient(180deg, #1c1c22 0%, #17171c 100%);
+    border: 1px solid #26262e;
+    border-left: 4px solid #6b7280;
+    border-radius: 16px; padding: 16px; margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    transition: opacity 0.3s ease, box-shadow 0.3s ease, transform 0.12s ease;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .card:active { transform: scale(0.985); }
+  .card.past { opacity: 0.42; }
+
+  .content.anim-forward .card:not(.past) {
+    animation-name: cardInFromRight;
+    animation-duration: 0.35s;
+    animation-timing-function: cubic-bezier(0.25, 0.8, 0.25, 1);
+    animation-delay: var(--card-delay, 0s);
+    animation-fill-mode: backwards;
+  }
+  .content.anim-backward .card:not(.past) {
+    animation-name: cardInFromLeft;
+    animation-duration: 0.35s;
+    animation-timing-function: cubic-bezier(0.25, 0.8, 0.25, 1);
+    animation-delay: var(--card-delay, 0s);
+    animation-fill-mode: backwards;
+  }
+  @keyframes cardInFromRight {
+    from { opacity: 0; transform: translateX(40px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes cardInFromLeft {
+    from { opacity: 0; transform: translateX(-40px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .content.anim-forward .break,
+  .content.anim-backward .break {
+    animation-name: breakIn;
+    animation-duration: 0.35s;
+    animation-timing-function: ease;
+    animation-delay: var(--break-delay, 0s);
+    animation-fill-mode: backwards;
+  }
+  @keyframes breakIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 0.85; transform: translateY(0); }
+  }
+
+  .card-actions-btn {
+    position: absolute;
+    top: 10px; right: 10px;
+    width: 32px; height: 32px;
+    border-radius: 9px;
+    background: #24242c; border: 1px solid #34343e;
+    color: #8e8e93;
+    font-size: 15px; font-family: inherit;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; padding: 0; z-index: 3;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, transform 0.1s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .card-actions-btn:active {
+    background: #34343e; color: #fff;
+    border-color: #4ade80;
+    transform: scale(0.9);
+  }
+
+  .card.type-lk      { border-left-color: #3b82f6; }
+  .card.type-pr      { border-left-color: #10b981; }
+  .card.type-lab     { border-left-color: #8b5cf6; }
+  .card.type-zachet  { border-left-color: #f59e0b; }
+  .card.type-ekzamen { border-left-color: #ef4444; }
+  .card.type-kons    { border-left-color: #eab308; }
+  .card.type-default { border-left-color: #6b7280; }
+
+  .card.current { --type-color: #6b7280; }
+  .card.current.type-lk      { --type-color: #3b82f6; }
+  .card.current.type-pr      { --type-color: #10b981; }
+  .card.current.type-lab     { --type-color: #8b5cf6; }
+  .card.current.type-zachet  { --type-color: #f59e0b; }
+  .card.current.type-ekzamen { --type-color: #ef4444; }
+  .card.current.type-kons    { --type-color: #eab308; }
+  .card.current.type-default { --type-color: #6b7280; }
+
+  .card.current {
+    box-shadow:
+      0 -2px 0 0 var(--type-color),
+      2px 0 0 0 var(--type-color),
+      0 2px 0 0 var(--type-color),
+      0 2px 8px rgba(0,0,0,0.4);
+  }
+
+  .content.anim-forward .card.current:not(.past) {
+    animation-name: cardInFromRight, currentPulse;
+    animation-duration: 0.35s, 2.4s;
+    animation-timing-function: cubic-bezier(0.25, 0.8, 0.25, 1), ease-in-out;
+    animation-delay: var(--card-delay, 0s), calc(var(--card-delay, 0s) + 0.6s);
+    animation-fill-mode: backwards, none;
+    animation-iteration-count: 1, infinite;
+  }
+  .content.anim-backward .card.current:not(.past) {
+    animation-name: cardInFromLeft, currentPulse;
+    animation-duration: 0.35s, 2.4s;
+    animation-timing-function: cubic-bezier(0.25, 0.8, 0.25, 1), ease-in-out;
+    animation-delay: var(--card-delay, 0s), calc(var(--card-delay, 0s) + 0.6s);
+    animation-fill-mode: backwards, none;
+    animation-iteration-count: 1, infinite;
+  }
+  .content:not(.anim-forward):not(.anim-backward) .card.current:not(.past) {
+    animation: currentPulse 2.4s ease-in-out infinite;
+  }
+  @keyframes currentPulse {
+    0%, 100% {
+      box-shadow:
+        0 -2px 0 0 var(--type-color),
+        2px 0 0 0 var(--type-color),
+        0 2px 0 0 var(--type-color),
+        0 2px 8px rgba(0,0,0,0.4);
+    }
+    50% {
+      box-shadow:
+        0 -3px 0 0 var(--type-color),
+        3px 0 0 0 var(--type-color),
+        0 3px 0 0 var(--type-color),
+        0 2px 14px rgba(0,0,0,0.4);
+    }
+  }
+
+  .time {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #2c2c36; font-size: 14px; font-weight: 600;
+    padding: 5px 10px; border-radius: 10px; margin-bottom: 10px;
+  }
+  .time-start { color: #4ade80; }
+  .time-sep { color: #8e8e93; }
+  .time-end { color: #f87171; }
+  .subject {
+    font-size: 17px; font-weight: 600;
+    line-height: 1.3; margin-bottom: 8px; color: #fff;
+    padding-right: 40px;
+  }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    margin-bottom: 6px; padding-right: 40px;
+  }
+  .type {
+    color: #fff; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 3px 8px; border-radius: 6px;
+  }
+  .type-lk      .type { background: #3b82f6; }
+  .type-pr      .type { background: #10b981; }
+  .type-lab     .type { background: #8b5cf6; }
+  .type-zachet  .type { background: #f59e0b; }
+  .type-ekzamen .type { background: #ef4444; }
+  .type-kons    .type { background: #eab308; }
+  .type-default .type { background: #6b7280; }
+  .teacher { font-size: 13px; color: #a1a1aa; }
+  .room { font-size: 13px; color: #a1a1aa; margin-top: 4px; }
+  .no-room { font-style: italic; color: #6b6b75; }
+  .moved-tag {
+    margin-top: 8px;
+    font-size: 11px; color: #fbbf24;
+    font-style: italic; opacity: 0.85;
+  }
+  .break {
+    text-align: center; font-size: 12px; color: #fbbf24;
+    margin: -4px 0 12px; font-style: italic; opacity: 0.85;
+  }
+  .note-shown {
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px dashed #2c2c36;
+    font-size: 13px; color: #e4e4e7; font-style: italic;
+    display: flex; align-items: flex-start; gap: 6px;
+    animation: noteIn 0.3s ease;
+  }
+  @keyframes noteIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .progress-bar {
+    position: absolute; left: 12px; right: 12px; bottom: 6px;
+    height: 3px; background: #2c2c36; border-radius: 2px; overflow: hidden;
+    display: none;
+  }
+  .card.current .progress-bar { display: block; }
+  .progress-fill {
+    height: 100%; width: 0%;
+    background: var(--type-color, #4ade80);
+    border-radius: 2px;
+    transition: width 1s linear;
+  }
+  .day-off {
+    text-align: center; padding: 30px 20px;
+    background: linear-gradient(180deg, #1c1c22 0%, #17171c 100%);
+    border: 1px solid #26262e; border-radius: 16px; margin-top: 8px;
+  }
+  .day-off-icon { font-size: 36px; margin-bottom: 10px; opacity: 0.7; }
+  .day-off-text { font-size: 15px; font-weight: 500; color: #a1a1aa; }
+  .footer { margin-top: 20px; text-align: center; font-size: 12px; color: #4a4a55; }
+  .changes-bar {
+    margin-top: 14px;
+    display: flex; justify-content: center; align-items: center;
+    gap: 12px;
+    font-size: 12px; color: #8e8e93;
+    padding: 10px 12px;
+    background: #15151a;
+    border: 1px solid #2c2c36;
+    border-radius: 12px;
+  }
+  .changes-bar.hidden { display: none; }
+  .changes-bar button {
+    background: transparent;
+    border: 1px solid #2c2c36;
+    color: #f87171;
+    font-size: 12px; font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer; font-family: inherit;
+  }
+  .changes-bar button:active { background: #2c2c36; }
+  .error {
+    padding: 16px; background: #2a1518; border: 1px solid #5b1f25;
+    border-radius: 12px; color: #f87171; font-size: 13px;
+    font-family: Menlo, monospace; white-space: pre-wrap; word-break: break-word;
+  }
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 1000; padding: 20px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: #1c1c22; border: 1px solid #2c2c36;
+    border-radius: 18px; width: 100%; max-width: 420px; padding: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    display: flex; flex-direction: column;
+    max-height: calc(100vh - 60px);
+    animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(40px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; color: #fff; }
+  .modal-sub { font-size: 12px; color: #8e8e93; margin-bottom: 14px; }
+  .modal textarea {
+    width: 100%; min-height: 90px;
+    background: #0b0b0f; border: 1px solid #2c2c36;
+    color: #fff; border-radius: 12px; padding: 12px;
+    font-size: 15px; font-family: inherit; resize: none; outline: none;
+  }
+  .modal textarea:focus { border-color: #4ade80; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .modal-btn {
+    flex: 1; min-width: 80px; background: #2c2c36; border: none; color: #fff;
+    font-size: 14px; font-weight: 600; padding: 12px;
+    border-radius: 12px; cursor: pointer; font-family: inherit;
+  }
+  .modal-btn:active { background: #3c3c46; }
+  .modal-btn.primary { background: #10b981; color: #fff; }
+  .modal-btn.primary:active { background: #0ea371; }
+  .modal-btn.danger { background: #2c2c36; color: #f87171; }
+  .modal-btn.danger:active { background: #3c3c46; }
+
+  .move-form { display: flex; flex-direction: column; gap: 10px; }
+  .move-form label {
+    font-size: 12px; color: #8e8e93; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .move-form select {
+    background: #0b0b0f;
+    border: 1px solid #2c2c36;
+    border-radius: 12px;
+    color: #fff;
+    padding: 12px;
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%238e8e93' stroke-width='2' fill='none' stroke-linecap='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 40px;
+  }
+  .move-form select:focus { border-color: #4ade80; }
+
+  .exams-list {
+    overflow-y: auto;
+    margin: 0 -4px 0 -4px;
+    padding: 0 4px;
+    flex: 1;
+    min-height: 0;
+  }
+  .exam-item {
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: #0b0b0f;
+    border: 1px solid #2c2c36;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background 0.12s ease;
+  }
+  .exam-item:active { background: #1c1c22; }
+  .exam-item-top {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px;
+  }
+  .exam-item-type {
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px;
+    padding: 3px 7px; border-radius: 5px; color: #fff;
+  }
+  .exam-item-type.ekz  { background: #ef4444; }
+  .exam-item-type.zach { background: #f59e0b; }
+  .exam-item-type.note { background: #3b82f6; }
+  .exam-item-days { font-size: 11px; font-weight: 600; color: #a1a1aa; }
+  .exam-item-days.soon { color: #f87171; }
+  .exam-item-subject {
+    font-size: 14px; font-weight: 600;
+    color: #fff; margin-bottom: 4px; line-height: 1.3;
+  }
+  .exam-item-date { font-size: 12px; color: #8e8e93; }
+  .exam-item-note {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #e4e4e7;
+    font-style: italic;
+    display: flex; align-items: flex-start; gap: 5px;
+    padding-top: 6px;
+    border-top: 1px dashed #2c2c36;
+  }
+  .exams-empty {
+    text-align: center; padding: 30px 10px;
+    color: #6b6b75; font-size: 14px;
+  }
+
+  .link-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: #0b0b0f;
+    border: 1px solid #2c2c36;
+    margin-bottom: 8px;
+    text-decoration: none;
+    color: #fff;
+    transition: background 0.12s ease, border-color 0.12s ease;
+    cursor: pointer;
+  }
+  .link-item:active { background: #1c1c22; border-color: #4ade80; }
+  .link-item-name { font-size: 15px; font-weight: 600; }
+  .link-item-arrow {
+    color: #6b6b75;
+    font-size: 18px;
+    font-weight: 300;
+    margin-left: 10px;
+  }
+  .link-item:active .link-item-arrow { color: #4ade80; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-left">
+        <div class="date-row">
+          <div class="date" id="dateLabel"></div>
+          <div class="count" id="countLabel"></div>
+        </div>
+        <div class="subheader" id="weekdayLabel"></div>
+      </div>
+      <div class="header-right">
+        <div class="left-btns">
+          <button class="square-btn exams-btn hidden" id="examsBtn" aria-label="Напоминания">
+            <svg class="fab-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C8.13 2 5 5.13 5 9V13L3 15V16H21V15L19 13V9C19 5.13 15.87 2 12 2ZM12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22Z" fill="currentColor"/>
+            </svg>
+          </button>
+          <button class="square-btn links-btn" id="linksBtn" aria-label="Ссылки на предметы">
+            <svg class="fab-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+        <div class="nav-column">
+          <button class="nav-btn" id="nextBtn">Завтра →</button>
+          <button class="nav-btn prev-btn hidden" id="prevBtn">← Вчера</button>
+        </div>
+      </div>
+    </div>
+    <div class="content" id="content"></div>
+    <div class="footer" id="footer"></div>
+    <div class="changes-bar hidden" id="changesBar">
+      <span id="changesText"></span>
+      <button id="resetChangesBtn">Сбросить</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-title">Заметка к паре</div>
+      <div class="modal-sub" id="modalSub"></div>
+      <textarea id="modalInput" placeholder="Например: взять лабу, сдать долг…"></textarea>
+      <div class="modal-actions">
+        <button class="modal-btn danger" id="modalDeleteBtn">Удалить</button>
+        <button class="modal-btn" id="modalCancelBtn">Отмена</button>
+        <button class="modal-btn primary" id="modalSaveBtn">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="actionsModalOverlay">
+    <div class="modal">
+      <div class="modal-title">Действия с парой</div>
+      <div class="modal-sub" id="actionsSub"></div>
+      <div class="modal-actions">
+        <button class="modal-btn" id="actionsCancelBtn">Отмена</button>
+        <button class="modal-btn primary" id="actionsMoveBtn">Перенести</button>
+        <button class="modal-btn danger" id="actionsDeleteBtn">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="moveModalOverlay">
+    <div class="modal">
+      <div class="modal-title">Перенос пары</div>
+      <div class="modal-sub" id="moveSub"></div>
+      <div class="move-form">
+        <label for="moveDateSelect">Куда перенести</label>
+        <select id="moveDateSelect"></select>
+        <label for="moveTimeSelect">Время начала</label>
+        <select id="moveTimeSelect"></select>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn" id="moveCancelBtn">Отмена</button>
+        <button class="modal-btn primary" id="moveConfirmBtn">Перенести</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="examsModalOverlay">
+    <div class="modal">
+      <div class="modal-title">Напоминания</div>
+      <div class="modal-sub" id="examsModalSub">Зачёты, экзамены и пары с заметками</div>
+      <div class="exams-list" id="examsList"></div>
+      <div class="modal-actions">
+        <button class="modal-btn" id="examsCloseBtn">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="linksModalOverlay">
+    <div class="modal">
+      <div class="modal-title">ссылки</div>
+      <div class="modal-sub">чтоб удобненько было</div>
+      <div class="exams-list" id="linksList"></div>
+      <div class="modal-actions">
+        <button class="modal-btn" id="linksCloseBtn">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+<script type="application/json" id="days-data">[{"key":"2026-10-12","label":"12.10.2026","weekday":"Понедельник","pairs":[{"start":"9:50","end":"11:25","subject":"Тестовый предмет","type":"Лк","teacher":"Тестов Т. Т.","room":"а.101 (К.1)"},{"start":"11:40","end":"13:15","subject":"Пробная пара","type":"Пр","teacher":"Пробный П. П.","room":"а.202 (К.2)"},{"start":"13:45","end":"15:20","subject":"Ещё один тестовый предмет","type":"Лаб","teacher":"Лабораторный Л. Л.","room":"а.303 (К.3)"}]},{"key":"2026-10-13","label":"13.10.2026","weekday":"Вторник","pairs":[{"start":"8:00","end":"9:35","subject":"Тестовая пара 1","type":"Лк","teacher":"Преподаватель А. А.","room":"а.101 (К.1)"},{"start":"9:50","end":"11:25","subject":"Тестовая пара 2","type":"Пр","teacher":"Преподаватель Б. Б.","room":"а.102 (К.1)"},{"start":"11:40","end":"13:15","subject":"Тестовая пара 3","type":"Лаб","teacher":"Преподаватель В. В.","room":"а.103 (К.1)"},{"start":"13:45","end":"15:20","subject":"Тестовая пара 4","type":"Лк","teacher":"Преподаватель Г. Г.","room":"а.104 (К.2)"},{"start":"15:35","end":"17:10","subject":"Тестовая пара 5","type":"Пр","teacher":"Преподаватель Д. Д.","room":"а.105 (К.2)"},{"start":"17:25","end":"19:00","subject":"Тестовая пара 6","type":"Лаб","teacher":"Преподаватель Е. Е.","room":"а.106 (К.3)"}]},{"key":"2026-10-14","label":"14.10.2026","weekday":"Среда","pairs":[{"start":"13:45","end":"15:20","subject":"Электромагнитные поля и волны","type":"Лк","teacher":"Лиманский В. Н.","room":"а.418 (К.1)"},{"start":"15:35","end":"17:10","subject":"Основы компьютерных технологий","type":"Пр","teacher":"Камянская Н. Р.","room":"а.251 (К.3)"},{"start":"17:25","end":"19:00","subject":"Основы компьютерных технологий","type":"Лк","teacher":"Шевнина И. Е.","room":"а.211 (К.1)"}]},{"key":"2026-10-15","label":"15.10.2026","weekday":"Четверг","pairs":[]},{"key":"2026-10-16","label":"16.10.2026","weekday":"Пятница","pairs":[{"start":"9:50","end":"11:25","subject":"Основы компьютерных технологий","type":"Пр","teacher":"Камянская Н. Р.","room":"а.255 (К.3)"},{"start":"11:40","end":"13:15","subject":"Теория вероятностей и математическая статистика","type":"Лк","teacher":"Галкина М. Ю.","room":"а.211 (К.1)"},{"start":"13:45","end":"15:20","subject":"Теория вероятностей и математическая статистика","type":"Лк","teacher":"Галкина М. Ю.","room":"а.211 (К.1)"}]},{"key":"2026-10-17","label":"17.10.2026","weekday":"Суббота","pairs":[{"start":"13:45","end":"15:20","subject":"Специальные главы программирования","type":"Лк","teacher":"Стенин А. В.","room":"а.355 (К.3)"},{"start":"15:35","end":"17:10","subject":"Специальные главы программирования","type":"Лк","teacher":"Стенин А. В.","room":"а.355 (К.3)"}]},{"key":"2026-10-18","label":"18.10.2026","weekday":"Воскресенье","pairs":[]},{"key":"2026-10-19","label":"19.10.2026","weekday":"Понедельник","pairs":[{"start":"11:40","end":"13:15","subject":"Специальные главы программирования","type":"Лаб","teacher":"Кречетов К. Е.","room":"а.59а (К.3)"},{"start":"13:45","end":"15:20","subject":"Дискретная математика","type":"Лк","teacher":"Галкина М. Ю.","room":"а.211 (К.1)"},{"start":"15:35","end":"17:10","subject":"Специальные главы программирования","type":"Лаб","teacher":"Кречетов К. Е.","room":"а.59а (К.3)"},{"start":"17:25","end":"19:00","subject":"Специальные главы программирования","type":"Лаб","teacher":"Кречетов К. Е.","room":"а.59а (К.3)"}]},{"key":"2026-10-20","label":"20.10.2026","weekday":"Вторник","pairs":[{"start":"8:00","end":"9:35","subject":"Специальные главы программирования","type":"Лаб","teacher":"Кречетов К. Е.","room":"а.59а (К.3)"},{"start":"9:50","end":"11:25","subject":"Русский язык и основы деловой коммуникации","type":"Лк","teacher":"Решетникова Е. В.","room":"а.178 (К.5)"},{"start":"11:40","end":"13:15","subject":"Специальные главы программирования","type":"Лаб","teacher":"Кречетов К. Е.","room":"а.59а (К.3)"}]},{"key":"2026-10-21","label":"21.10.2026","weekday":"Среда","pairs":[{"start":"8:00","end":"9:35","subject":"Теория вероятностей и математическая статистика","type":"Лк","teacher":"Галкина М. Ю.","room":"а.422 (К.1)"},{"start":"9:50","end":"11:25","subject":"Основы компьютерных технологий","type":"Пр","teacher":"Камянская Н. Р.","room":"а.253 (К.3)"},{"start":"13:45","end":"15:20","subject":"Теория вероятностей и математическая статистика","type":"Пр","teacher":"Галкина М. Ю.","room":"а.418 (К.1)"}]},{"key":"2026-10-22","label":"22.10.2026","weekday":"Четверг","pairs":[{"start":"8:00","end":"9:35","subject":"Русский язык и основы деловой коммуникации","type":"Пр","teacher":"Решетникова Е. В.","room":"а.211 (К.1)"},{"start":"9:50","end":"11:25","subject":"Русский язык и основы деловой коммуникации","type":"Пр","teacher":"Решетникова Е. В.","room":"а.211 (К.1)"},{"start":"11:40","end":"13:15","subject":"Основы телекоммуникаций","type":"Лк","teacher":"Тимченко С. В.","room":"а.260 (К.3)"},{"start":"13:45","end":"15:20","subject":"Теория вероятностей и математическая статистика","type":"Пр","teacher":"Галкина М. Ю.","room":"а.202 (К.1)"},{"start":"15:35","end":"17:10","subject":"Специальные главы программирования","type":"Лаб","teacher":"Кречетов К. Е.","room":"а.59а (К.3)"}]},{"key":"2026-10-23","label":"23.10.2026","weekday":"Пятница","pairs":[{"start":"9:50","end":"11:25","subject":"Теория вероятностей и математическая статистика","type":"Пр","teacher":"Галкина М. Ю.","room":"а.211 (К.1)"},{"start":"11:40","end":"13:15","subject":"Теория вероятностей и математическая статистика","type":"Пр","teacher":"Галкина М. Ю.","room":"а.211 (К.1)"},{"start":"13:45","end":"15:20","subject":"Русский язык и основы деловой коммуникации","type":"Пр","teacher":"Решетникова Е. В.","room":"а.526 (К.1)"},{"start":"15:35","end":"17:10","subject":"Теория вероятностей и математическая статистика","type":"Конс.перед.","teacher":"Галкина М. Ю.","room":"а.424 (К.1)"},{"start":"17:25","end":"19:00","subject":"Основы компьютерных технологий","type":"Зачет","teacher":"Шевнина И. Е.","room":"а.255 (К.3)"}]},{"key":"2026-10-24","label":"24.10.2026","weekday":"Суббота","pairs":[{"start":"8:00","end":"9:35","subject":"Специальные главы программирования","type":"Зачет","teacher":"Стенин А. В.","room":"а.355 (К.3)"},{"start":"11:40","end":"13:15","subject":"Философия","type":"Лк","teacher":"Чудинов С. И.","room":"а.176 (К.5)"},{"start":"13:45","end":"15:20","subject":"Философия","type":"Лк","teacher":"Чудинов С. И.","room":"а.176 (К.5)"}]},{"key":"2026-10-25","label":"25.10.2026","weekday":"Воскресенье","pairs":[]},{"key":"2026-10-26","label":"26.10.2026","weekday":"Понедельник","pairs":[{"start":"9:50","end":"11:25","subject":"Беспроводные технологии передачи данных","type":"Лк","teacher":"Тимченко С. В.","room":"а.260 (К.3)"},{"start":"15:35","end":"17:10","subject":"Теория вероятностей и математическая статистика","type":"Экзамен","teacher":"Галкина М. Ю.","room":"а.211 (К.1)"}]},{"key":"2026-10-27","label":"27.10.2026","weekday":"Вторник","pairs":[{"start":"15:35","end":"17:10","subject":"Философия","type":"Пр","teacher":"Чудинов С. И.","room":"а.364 (К.5)"},{"start":"17:25","end":"19:00","subject":"Философия","type":"Пр","teacher":"Чудинов С. И.","room":"а.364 (К.5)"}]},{"key":"2026-10-28","label":"28.10.2026","weekday":"Среда","pairs":[{"start":"9:50","end":"11:25","subject":"Русский язык и основы деловой коммуникации","type":"Зачет","teacher":"Решетникова Е. В.","room":"а.522 (К.1)"},{"start":"11:40","end":"13:15","subject":"Языки программирования","type":"Лк","teacher":"Квиткова И. Г.","room":"а.255 (К.3)"},{"start":"13:45","end":"15:20","subject":"Языки программирования","type":"Лк","teacher":"Квиткова И. Г.","room":"а.255 (К.3)"},{"start":"15:35","end":"17:10","subject":"Инженерная и компьютерная графика","type":"Лк","teacher":"Мефодьева Л. Я.","room":"а.211 (К.1)"},{"start":"17:25","end":"19:00","subject":"Инженерная и компьютерная графика","type":"Лк","teacher":"Мефодьева Л. Я.","room":"а.211 (К.1)"}]},{"key":"2026-10-29","label":"29.10.2026","weekday":"Четверг","pairs":[{"start":"9:50","end":"11:25","subject":"Философия","type":"Зачет","teacher":"Чудинов С. И.","room":"а.615 (К.1)"},{"start":"13:45","end":"15:20","subject":"Правоведение","type":"Лк","teacher":"Микиденко Н. Л.","room":"а.211 (К.1)"},{"start":"17:25","end":"19:00","subject":"Компьютерное моделирование","type":"Лк","teacher":"Стенин А. В.","room":""},{"start":"19:00","end":"20:35","subject":"Компьютерное моделирование","type":"Лк","teacher":"Стенин А. В.","room":""}]},{"key":"2026-10-30","label":"30.10.2026","weekday":"Пятница","pairs":[{"start":"13:45","end":"15:20","subject":"Вычислительная техника","type":"Лк","teacher":"Микушин А. В.","room":""}]},{"key":"2026-10-31","label":"31.10.2026","weekday":"Суббота","pairs":[]}]</script>
+<script type="application/json" id="notes-data">{}</script>
+<script type="application/json" id="tz-data">"Asia/Novosibirsk"</script>
+<script type="application/json" id="subjects-data">[{"name":"Философия","url":"https://eios.sibsutis.ru/course/view.php?id=1571"},{"name":"ОКТ","url":"https://eios.sibsutis.ru/course/view.php?id=4553"},{"name":"Русский язык","url":"https://eios.sibsutis.ru/course/view.php?id=2381"},{"name":"Теория вероятностей","url":"https://eios.sibsutis.ru/course/view.php?id=2223"}]</script>
+<script>
+(function () {
+  'use strict';
+
+  function showFatalError(msg) {
+    var el = document.getElementById('content');
+    if (el) {
+      el.innerHTML = '<div class="error">Ошибка: ' + String(msg) + '</div>';
+    }
+  }
+
+  window.onerror = function (m, u, l) {
+    showFatalError(m + ' (строка ' + l + ')');
+  };
+
+  try {
+    var days = JSON.parse(document.getElementById('days-data').textContent);
+    var notes = JSON.parse(document.getElementById('notes-data').textContent);
+    var TZ = JSON.parse(document.getElementById('tz-data').textContent);
+    var SUBJECTS = JSON.parse(document.getElementById('subjects-data').textContent);
+
+    function vib(pattern) {
+      try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
+    }
+
+    function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+    function getZonedParts(date, timeZone) {
+      var fmt = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timeZone,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false
+      });
+      var parts = fmt.formatToParts(date);
+      var obj = {};
+      for (var i = 0; i < parts.length; i++) obj[parts[i].type] = parts[i].value;
+      var h = obj.hour === '24' ? '00' : obj.hour;
+      return {
+        year: parseInt(obj.year, 10),
+        month: parseInt(obj.month, 10),
+        day: parseInt(obj.day, 10),
+        hours: parseInt(h, 10),
+        minutes: parseInt(obj.minute, 10)
+      };
+    }
+
+    function todayKeyFn() {
+      var p = getZonedParts(new Date(), TZ);
+      return p.year + '-' + pad2(p.month) + '-' + pad2(p.day);
+    }
+    function nowMinutesFn() {
+      var p = getZonedParts(new Date(), TZ);
+      return p.hours * 60 + p.minutes;
+    }
+
+    function dayDiff(fromKey, toKey) {
+      var f = fromKey.split('-');
+      var t = toKey.split('-');
+      var fMs = Date.UTC(parseInt(f[0], 10), parseInt(f[1], 10) - 1, parseInt(f[2], 10));
+      var tMs = Date.UTC(parseInt(t[0], 10), parseInt(t[1], 10) - 1, parseInt(t[2], 10));
+      return Math.round((tMs - fMs) / 86400000);
+    }
+
+    function daysUntilText(n) {
+      if (n === 0) return 'сегодня';
+      if (n === 1) return 'завтра';
+      if (n === 2) return 'через 2 дня';
+      if (n === 3) return 'через 3 дня';
+      if (n === 4) return 'через 4 дня';
+      return 'через ' + n + ' дней';
+    }
+
+    var todayKey = todayKeyFn();
+
+    var currentIndex = 0;
+    for (var i = 0; i < days.length; i++) {
+      if (days[i].key === todayKey) { currentIndex = i; break; }
+    }
+
+    function saveNotes() {
+      try { localStorage.setItem('schedule_notes_v1', JSON.stringify(notes)); } catch (e) {}
+    }
+    try {
+      var stored = localStorage.getItem('schedule_notes_v1');
+      if (stored) notes = JSON.parse(stored);
+    } catch (e) {}
+
+    var CHANGES_KEY = 'schedule_changes_v1';
+
+    function loadChanges() {
+      try {
+        var s = localStorage.getItem(CHANGES_KEY);
+        if (s) {
+          var obj = JSON.parse(s);
+          return {
+            deleted: obj.deleted || {},
+            moved: obj.moved || []
+          };
+        }
+      } catch (e) {}
+      return { deleted: {}, moved: [] };
+    }
+
+    function saveChangesToDisk() {
+      try { localStorage.setItem(CHANGES_KEY, JSON.stringify(changes)); } catch (e) {}
+    }
+
+    var changes = loadChanges();
+
+    function isDeleted(dateK, idx) {
+      var arr = changes.deleted[dateK];
+      return arr && arr.indexOf(idx) >= 0;
+    }
+
+    function findMove(dateK, idx) {
+      for (var i = 0; i < changes.moved.length; i++) {
+        var mv = changes.moved[i];
+        if (mv.fromDate === dateK && mv.fromIdx === idx) return mv;
+      }
+      return null;
+    }
+
+    function changesCount() {
+      var total = changes.moved.length;
+      for (var k in changes.deleted) {
+        if (Object.prototype.hasOwnProperty.call(changes.deleted, k)) {
+          total += changes.deleted[k].length;
+        }
+      }
+      return total;
+    }
+
+    function calcEndFromStart(startStr) {
+      var parts = String(startStr).split(':');
+      var mins = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10) + 95;
+      var h = Math.floor(mins / 60);
+      var m = mins % 60;
+      return h + ':' + pad2(m);
+    }
+
+    function getEffectivePairs(dayKey) {
+      var day = null;
+      for (var d = 0; d < days.length; d++) {
+        if (days[d].key === dayKey) { day = days[d]; break; }
+      }
+      if (!day) return [];
+
+      var list = [];
+      for (var i = 0; i < day.pairs.length; i++) {
+        if (isDeleted(dayKey, i)) continue;
+        if (findMove(dayKey, i)) continue;
+        var p = day.pairs[i];
+        list.push({
+          start: p.start, end: p.end, subject: p.subject, type: p.type,
+          teacher: p.teacher, room: p.room,
+          _origDate: dayKey, _origIdx: i, _isMoved: false
+        });
+      }
+
+      for (var m = 0; m < changes.moved.length; m++) {
+        var mv = changes.moved[m];
+        if (mv.toDate !== dayKey) continue;
+        var srcDay = null;
+        for (var dd = 0; dd < days.length; dd++) {
+          if (days[dd].key === mv.fromDate) { srcDay = days[dd]; break; }
+        }
+        if (!srcDay) continue;
+        var orig = srcDay.pairs[mv.fromIdx];
+        if (!orig) continue;
+        list.push({
+          start: mv.newStart,
+          end: calcEndFromStart(mv.newStart),
+          subject: orig.subject,
+          type: orig.type,
+          teacher: orig.teacher,
+          room: orig.room,
+          _origDate: mv.fromDate,
+          _origIdx: mv.fromIdx,
+          _isMoved: true,
+          _movedFrom: mv.fromDate
+        });
+      }
+
+      list.sort(function (a, b) {
+        return parseTime(a.start) - parseTime(b.start);
+      });
+      return list;
+    }
+
+    var contentEl = document.getElementById('content');
+    var dateEl = document.getElementById('dateLabel');
+    var countEl = document.getElementById('countLabel');
+    var weekdayEl = document.getElementById('weekdayLabel');
+    var prevBtn = document.getElementById('prevBtn');
+    var nextBtn = document.getElementById('nextBtn');
+    var footerEl = document.getElementById('footer');
+    var modalOverlay = document.getElementById('modalOverlay');
+    var modalInput = document.getElementById('modalInput');
+    var modalSub = document.getElementById('modalSub');
+    var modalDeleteBtn = document.getElementById('modalDeleteBtn');
+    var examsBtn = document.getElementById('examsBtn');
+    var examsModalOverlay = document.getElementById('examsModalOverlay');
+    var examsList = document.getElementById('examsList');
+    var linksBtn = document.getElementById('linksBtn');
+    var linksModalOverlay = document.getElementById('linksModalOverlay');
+    var linksList = document.getElementById('linksList');
+    var actionsModalOverlay = document.getElementById('actionsModalOverlay');
+    var actionsSub = document.getElementById('actionsSub');
+    var actionsMoveBtn = document.getElementById('actionsMoveBtn');
+    var actionsDeleteBtn = document.getElementById('actionsDeleteBtn');
+    var actionsCancelBtn = document.getElementById('actionsCancelBtn');
+    var moveModalOverlay = document.getElementById('moveModalOverlay');
+    var moveSub = document.getElementById('moveSub');
+    var moveDateSelect = document.getElementById('moveDateSelect');
+    var moveTimeSelect = document.getElementById('moveTimeSelect');
+    var moveCancelBtn = document.getElementById('moveCancelBtn');
+    var moveConfirmBtn = document.getElementById('moveConfirmBtn');
+    var changesBar = document.getElementById('changesBar');
+    var changesText = document.getElementById('changesText');
+    var resetChangesBtn = document.getElementById('resetChangesBtn');
+
+    var editingDate = null;
+    var editingIdx = null;
+
+    var actionOrigDate = null;
+    var actionOrigIdx = null;
+    var actionIsMoved = false;
+
+    var moveOrigDate = null;
+    var moveOrigIdx = null;
+    var moveOrigStart = null;
+
+    var lastCount = -1;
+
+    function esc(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function parseTime(hhmm) {
+      var parts = String(hhmm || '').split(':');
+      return parseInt(parts[0] || '0', 10) * 60 + parseInt(parts[1] || '0', 10);
+    }
+
+    function formatRoom(raw) {
+      if (!raw) return '';
+      var text = String(raw).trim();
+      if (!text) return '';
+
+      var low = text.toLowerCase();
+      if (low.indexOf('ауд.') === 0) text = text.substring(4).trim();
+      else if (low.indexOf('а.') === 0) text = text.substring(2).trim();
+
+      var korpus = '';
+      var upper = text.toUpperCase();
+      var idxK = upper.indexOf('К');
+      if (idxK >= 0) {
+        var i = idxK + 1;
+        while (i < text.length && (text.charAt(i) === '.' || text.charAt(i) === ' ')) i++;
+        var digits = '';
+        while (i < text.length) {
+          var ch = text.charAt(i);
+          if (ch >= '0' && ch <= '9') { digits += ch; i++; }
+          else break;
+        }
+        if (digits) {
+          korpus = 'К' + digits;
+          var before = text.substring(0, idxK);
+          var after = text.substring(i);
+          before = before.split('(').join(' ').split(')').join(' ').trim();
+          after = after.split('(').join(' ').split(')').join(' ').trim();
+          text = (before + ' ' + after).trim();
+        }
+      }
+
+      var room = '';
+      for (var j = 0; j < text.length; j++) {
+        var c = text.charAt(j);
+        if (c >= '0' && c <= '9') {
+          room += c;
+          var k = j + 1;
+          while (k < text.length) {
+            var cc = text.charAt(k);
+            if ((cc >= '0' && cc <= '9') || (cc >= 'а' && cc <= 'я') || (cc >= 'a' && cc <= 'z')) {
+              room += cc;
+              k++;
+            } else break;
+          }
+          break;
+        }
+      }
+      if (!room) room = text.trim();
+
+      if (korpus && room) return korpus + ' · ' + room;
+      if (room) return room;
+      if (korpus) return korpus;
+      return '';
+    }
+
+    function formatBreak(mins) {
+      if (mins < 60) return 'перерыв ' + mins + ' мин';
+      var h = Math.floor(mins / 60);
+      var m = mins % 60;
+      if (m === 0) return 'перерыв ' + h + ' ч';
+      return 'перерыв ' + h + ' ч ' + m + ' мин';
+    }
+
+    function buildBreakHTML(currentEnd, nextStart) {
+      if (currentEnd === null || nextStart === null) return '';
+      var diff = nextStart - currentEnd;
+      if (diff < 5) return '';
+      return '<div class="break">' + formatBreak(diff) + '</div>';
+    }
+
+    function typeClass(t) {
+      t = String(t || '').toLowerCase();
+      if (t.indexOf('лаб') >= 0) return 'type-lab';
+      if (t.indexOf('лк') >= 0 || t.indexOf('лек') >= 0) return 'type-lk';
+      if (t.indexOf('экзам') >= 0) return 'type-ekzamen';
+      if (t.indexOf('зач') >= 0) return 'type-zachet';
+      if (t.indexOf('конс') >= 0) return 'type-kons';
+      if (t.indexOf('пр') >= 0) return 'type-pr';
+      return 'type-default';
+    }
+
+    function pairCountText(n) {
+      if (n === 0) return 'выходной';
+      if (n === 1) return '1 пара';
+      if (n >= 2 && n <= 4) return n + ' пары';
+      return n + ' пар';
+    }
+
+    function getNote(dateK, idx) {
+      if (!notes[dateK]) return '';
+      return notes[dateK][String(idx)] || '';
+    }
+
+    function shortDate(key) {
+      var parts = key.split('-');
+      return parts[2] + '.' + parts[1];
+    }
+
+    function computeUpcomingExams() {
+      var result = [];
+      for (var i = 0; i < days.length; i++) {
+        var day = days[i];
+        var diff = dayDiff(todayKey, day.key);
+        if (diff < 0) continue;
+        var effective = getEffectivePairs(day.key);
+        for (var j = 0; j < effective.length; j++) {
+          var p = effective[j];
+          var t = String(p.type || '').toLowerCase();
+          var isExam = t.indexOf('экзам') >= 0;
+          var isZachet = t.indexOf('зач') >= 0;
+          var noteText = getNote(p._origDate, p._origIdx);
+
+          if (isExam || isZachet || noteText) {
+            result.push({
+              dayKey: day.key,
+              dayLabel: day.label,
+              weekday: day.weekday,
+              subject: p.subject,
+              type: p.type,
+              start: p.start,
+              daysUntil: diff,
+              isExam: isExam,
+              isZachet: isZachet,
+              note: noteText,
+              hasNote: !!noteText
+            });
+          }
+        }
+      }
+      result.sort(function (a, b) {
+        if (a.dayKey !== b.dayKey) return a.dayKey < b.dayKey ? -1 : 1;
+        return a.start < b.start ? -1 : 1;
+      });
+      return result;
+    }
+
+    var upcomingExams = computeUpcomingExams();
+
+    function colorClassForDays(d) {
+      if (d <= 1) return 'critical';
+      if (d <= 3) return 'red';
+      if (d <= 6) return 'orange';
+      if (d <= 10) return 'yellow';
+      if (d <= 14) return 'green';
+      return null;
+    }
+
+    var ALL_COLOR_CLASSES = ['green', 'yellow', 'orange', 'red', 'critical'];
+
+    function updateExamsBtn() {
+      if (upcomingExams.length === 0) {
+        examsBtn.classList.add('hidden');
+        return;
+      }
+      examsBtn.classList.remove('hidden');
+
+      var minDays = null;
+      for (var i = 0; i < upcomingExams.length; i++) {
+        if (upcomingExams[i].isExam || upcomingExams[i].isZachet) {
+          minDays = upcomingExams[i].daysUntil;
+          break;
+        }
+      }
+
+      for (var c = 0; c < ALL_COLOR_CLASSES.length; c++) {
+        examsBtn.classList.remove(ALL_COLOR_CLASSES[c]);
+      }
+
+      if (minDays !== null) {
+        var cls = colorClassForDays(minDays);
+        if (cls) examsBtn.classList.add(cls);
+      }
+    }
+
+    function updateChangesBar() {
+      var n = changesCount();
+      if (n === 0) {
+        changesBar.classList.add('hidden');
+        return;
+      }
+      changesBar.classList.remove('hidden');
+      var word = n === 1 ? 'пара' : (n >= 2 && n <= 4 ? 'пары' : 'пар');
+      changesText.textContent = 'Изменено: ' + n + ' ' + word;
+    }
+
+    function buildCards(day) {
+      var effective = getEffectivePairs(day.key);
+
+      if (effective.length === 0) {
+        return '<div class="day-off">' +
+          '<div class="day-off-icon">☕️</div>' +
+          '<div class="day-off-text">Выходной — пар нет</div>' +
+          '</div>';
+      }
+
+      var isToday = day.key === todayKey;
+      var isPastDay = day.key < todayKey;
+      var nowM = nowMinutesFn();
+      var html = '';
+
+      for (var i = 0; i < effective.length; i++) {
+        var p = effective[i];
+        var start = parseTime(p.start);
+        var end = parseTime(p.end);
+        var stateClass = '';
+        var progressPct = 0;
+
+        if (isPastDay) {
+          stateClass = 'past';
+        } else if (isToday) {
+          if (nowM >= end) stateClass = 'past';
+          else if (nowM >= start && nowM < end) {
+            stateClass = 'current';
+            progressPct = ((nowM - start) / (end - start)) * 100;
+          }
+        }
+
+        var tClass = typeClass(p.type);
+        var roomFormatted = formatRoom(p.room);
+        var roomHTML = roomFormatted
+          ? '<div class="room">📍 ' + esc(roomFormatted) + '</div>'
+          : '<div class="room no-room">📍 аудитория не указана</div>';
+
+        var note = getNote(p._origDate, p._origIdx);
+        var noteHTML = note
+          ? '<div class="note-shown"><span>📝</span><span>' + esc(note) + '</span></div>'
+          : '';
+
+        var movedHTML = p._isMoved
+          ? '<div class="moved-tag">↪ перенесено с ' + shortDate(p._movedFrom) + '</div>'
+          : '';
+
+        var delay = (i * 0.05).toFixed(2);
+
+        html += '<div class="card ' + tClass + ' ' + stateClass + '"' +
+          ' style="--card-delay: ' + delay + 's"' +
+          ' data-origdate="' + p._origDate + '"' +
+          ' data-origidx="' + p._origIdx + '"' +
+          ' data-moved="' + (p._isMoved ? '1' : '0') + '">' +
+          '<button class="card-actions-btn" aria-label="Действия">✎</button>' +
+          '<div class="time">' +
+            '<span class="time-start">' + esc(p.start) + '</span>' +
+            '<span class="time-sep">–</span>' +
+            '<span class="time-end">' + esc(p.end) + '</span>' +
+          '</div>' +
+          '<div class="subject">' + esc(p.subject) + '</div>' +
+          '<div class="meta">' +
+            '<span class="type">' + esc(p.type) + '</span>' +
+            '<span class="teacher">' + esc(p.teacher) + '</span>' +
+          '</div>' +
+          roomHTML + movedHTML + noteHTML +
+          '<div class="progress-bar"><div class="progress-fill" style="width:' + progressPct + '%"></div></div>' +
+        '</div>';
+
+        if (i < effective.length - 1) {
+          var nextStart = parseTime(effective[i + 1].start);
+          var brk = buildBreakHTML(end, nextStart);
+          if (brk) {
+            var breakDelay = ((i + 1) * 0.05).toFixed(2);
+            brk = brk.replace('<div class="break">', '<div class="break" style="--break-delay: ' + breakDelay + 's">');
+            html += brk;
+          }
+        }
+      }
+      return html;
+    }
+
+    function attachCardHandlers() {
+      var cards = contentEl.querySelectorAll('.card');
+      for (var k = 0; k < cards.length; k++) {
+        (function (card) {
+          var origDate = card.getAttribute('data-origdate');
+          var origIdx = parseInt(card.getAttribute('data-origidx'), 10);
+          var isMoved = card.getAttribute('data-moved') === '1';
+
+          card.addEventListener('click', function (e) {
+            if (e.target.closest('.card-actions-btn')) return;
+            openNoteModal(origDate, origIdx);
+          });
+
+          var btn = card.querySelector('.card-actions-btn');
+          if (btn) {
+            btn.addEventListener('click', function (e) {
+              e.stopPropagation();
+              e.preventDefault();
+              vib(10);
+              openActionsModal(origDate, origIdx, isMoved);
+            });
+          }
+        })(cards[k]);
+      }
+    }
+
+    function render(opts) {
+      opts = opts || {};
+      var direction = opts.direction || 'none';
+
+      var day = days[currentIndex];
+      dateEl.textContent = day.label;
+      weekdayEl.textContent = day.weekday + ' · группа ЗС-51';
+
+      var effectiveCount = getEffectivePairs(day.key).length;
+      countEl.textContent = pairCountText(effectiveCount);
+      if (effectiveCount === 0) countEl.classList.add('empty');
+      else countEl.classList.remove('empty');
+
+      if (lastCount !== -1 && lastCount !== effectiveCount) {
+        countEl.classList.remove('tick');
+        void countEl.offsetWidth;
+        countEl.classList.add('tick');
+      }
+      lastCount = effectiveCount;
+
+      if (currentIndex > 0) prevBtn.classList.remove('hidden');
+      else prevBtn.classList.add('hidden');
+      if (currentIndex >= days.length - 1) nextBtn.classList.add('hidden');
+      else nextBtn.classList.remove('hidden');
+
+      contentEl.classList.remove('anim-forward', 'anim-backward');
+
+      contentEl.innerHTML = buildCards(day);
+
+      if (direction === 'forward') {
+        void contentEl.offsetWidth;
+        contentEl.classList.add('anim-forward');
+      } else if (direction === 'backward') {
+        void contentEl.offsetWidth;
+        contentEl.classList.add('anim-backward');
+      }
+
+      attachCardHandlers();
+      footerEl.textContent = (currentIndex + 1) + ' из ' + days.length;
+
+      updateChangesBar();
+    }
+
+    function jumpToDay(dayKey) {
+      for (var i = 0; i < days.length; i++) {
+        if (days[i].key === dayKey) {
+          var dir = i > currentIndex ? 'forward' : (i < currentIndex ? 'backward' : 'none');
+          currentIndex = i;
+          render({ direction: dir });
+          return;
+        }
+      }
+    }
+
+    function nextDay() {
+      if (currentIndex < days.length - 1) {
+        currentIndex++;
+        vib(8);
+        render({ direction: 'forward' });
+      }
+    }
+    function prevDay() {
+      if (currentIndex > 0) {
+        currentIndex--;
+        vib(8);
+        render({ direction: 'backward' });
+      }
+    }
+
+    function openNoteModal(dateK, idx) {
+      editingDate = dateK;
+      editingIdx = idx;
+      var dObj = null;
+      for (var j = 0; j < days.length; j++) if (days[j].key === dateK) dObj = days[j];
+      var p = dObj && dObj.pairs[idx];
+      modalSub.textContent = p ? (p.subject + ' · ' + p.start) : '';
+      var current = getNote(dateK, idx);
+      modalInput.value = current;
+      if (current) modalDeleteBtn.style.display = 'block';
+      else modalDeleteBtn.style.display = 'none';
+      modalOverlay.classList.add('show');
+      setTimeout(function () { modalInput.focus(); }, 100);
+    }
+
+    function closeModal() {
+      modalOverlay.classList.remove('show');
+      editingDate = null;
+      editingIdx = null;
+    }
+
+    function saveNote() {
+      if (editingDate === null) return;
+      var text = modalInput.value;
+      if (!notes[editingDate]) notes[editingDate] = {};
+      if (text.trim()) notes[editingDate][String(editingIdx)] = text.trim();
+      else {
+        delete notes[editingDate][String(editingIdx)];
+        if (Object.keys(notes[editingDate]).length === 0) delete notes[editingDate];
+      }
+      saveNotes();
+      vib(15);
+      closeModal();
+      render();
+    }
+
+    function deleteNote() {
+      if (editingDate === null) return;
+      modalInput.value = '';
+      saveNote();
+    }
+
+    function openActionsModal(origDate, origIdx, isMoved) {
+      actionOrigDate = origDate;
+      actionOrigIdx = origIdx;
+      actionIsMoved = isMoved;
+
+      var dObj = null;
+      for (var j = 0; j < days.length; j++) if (days[j].key === origDate) dObj = days[j];
+      var p = dObj && dObj.pairs[origIdx];
+      actionsSub.textContent = p ? (p.subject + ' · ' + p.start) : '';
+
+      if (isMoved) {
+        actionsMoveBtn.textContent = '← Вернуть на место';
+      } else {
+        actionsMoveBtn.textContent = 'Перенести';
+      }
+      actionsModalOverlay.classList.add('show');
+    }
+
+    function closeActionsModal() {
+      actionsModalOverlay.classList.remove('show');
+      actionOrigDate = null;
+      actionOrigIdx = null;
+      actionIsMoved = false;
+    }
+
+    actionsCancelBtn.addEventListener('click', closeActionsModal);
+
+    actionsDeleteBtn.addEventListener('click', function () {
+      if (actionOrigDate === null) return;
+      changes.moved = changes.moved.filter(function (mv) {
+        return !(mv.fromDate === actionOrigDate && mv.fromIdx === actionOrigIdx);
+      });
+      if (!changes.deleted[actionOrigDate]) changes.deleted[actionOrigDate] = [];
+      if (changes.deleted[actionOrigDate].indexOf(actionOrigIdx) < 0) {
+        changes.deleted[actionOrigDate].push(actionOrigIdx);
+      }
+      saveChangesToDisk();
+      vib([15, 40, 15]);
+      closeActionsModal();
+      render();
+    });
+
+    actionsMoveBtn.addEventListener('click', function () {
+      if (actionOrigDate === null) return;
+
+      if (actionIsMoved) {
+        changes.moved = changes.moved.filter(function (mv) {
+          return !(mv.fromDate === actionOrigDate && mv.fromIdx === actionOrigIdx);
+        });
+        saveChangesToDisk();
+        vib(15);
+        closeActionsModal();
+        render();
+      } else {
+        var dObj = null;
+        for (var j = 0; j < days.length; j++) if (days[j].key === actionOrigDate) dObj = days[j];
+        var p = dObj && dObj.pairs[actionOrigIdx];
+        if (!p) { closeActionsModal(); return; }
+
+        moveOrigDate = actionOrigDate;
+        moveOrigIdx = actionOrigIdx;
+        moveOrigStart = p.start;
+
+        closeActionsModal();
+        openMoveModal(p);
+      }
+    });
+
+    var TIME_SLOTS = ['8:00', '9:50', '11:40', '13:45', '15:35', '17:25', '19:00'];
+
+    function openMoveModal(pair) {
+      moveSub.textContent = pair.subject;
+
+      var dateOpts = '';
+      for (var i = 0; i < days.length; i++) {
+        var d = days[i];
+        var sel = d.key === moveOrigDate ? ' selected' : '';
+        dateOpts += '<option value="' + d.key + '"' + sel + '>' +
+          d.label + ' — ' + d.weekday + '</option>';
+      }
+      moveDateSelect.innerHTML = dateOpts;
+
+      var timeOpts = '';
+      for (var j = 0; j < TIME_SLOTS.length; j++) {
+        var t = TIME_SLOTS[j];
+        var sel2 = t === pair.start ? ' selected' : '';
+        timeOpts += '<option value="' + t + '"' + sel2 + '>' + t + ' – ' + calcEndFromStart(t) + '</option>';
+      }
+      moveTimeSelect.innerHTML = timeOpts;
+
+      moveModalOverlay.classList.add('show');
+    }
+
+    function closeMoveModal() {
+      moveModalOverlay.classList.remove('show');
+      moveOrigDate = null;
+      moveOrigIdx = null;
+      moveOrigStart = null;
+    }
+
+    moveCancelBtn.addEventListener('click', closeMoveModal);
+
+    moveConfirmBtn.addEventListener('click', function () {
+      if (moveOrigDate === null) return;
+      var toDate = moveDateSelect.value;
+      var newStart = moveTimeSelect.value;
+
+      if (toDate === moveOrigDate && newStart === moveOrigStart) {
+        closeMoveModal();
+        return;
+      }
+
+      var found = false;
+      for (var i = 0; i < changes.moved.length; i++) {
+        var mv = changes.moved[i];
+        if (mv.fromDate === moveOrigDate && mv.fromIdx === moveOrigIdx) {
+          mv.toDate = toDate;
+          mv.newStart = newStart;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        changes.moved.push({
+          fromDate: moveOrigDate,
+          fromIdx: moveOrigIdx,
+          toDate: toDate,
+          newStart: newStart
+        });
+      }
+      saveChangesToDisk();
+      vib(15);
+      closeMoveModal();
+      render();
+    });
+
+    resetChangesBtn.addEventListener('click', function () {
+      if (!confirm('Отменить все изменения? Удалённые и перенесённые пары вернутся на свои места.')) return;
+      changes = { deleted: {}, moved: [] };
+      saveChangesToDisk();
+      vib([20, 40, 20]);
+      render();
+    });
+
+    function openExamsModal() {
+      upcomingExams = computeUpcomingExams();
+      renderExamsList();
+      examsModalOverlay.classList.add('show');
+    }
+    function closeExamsModal() { examsModalOverlay.classList.remove('show'); }
+
+    function renderExamsList() {
+      if (upcomingExams.length === 0) {
+        examsList.innerHTML = '<div class="exams-empty">Пока ничего не запланировано</div>';
+        return;
+      }
+      var html = '';
+      for (var i = 0; i < upcomingExams.length; i++) {
+        var e = upcomingExams[i];
+        var tCls;
+        if (e.isExam) tCls = 'ekz';
+        else if (e.isZachet) tCls = 'zach';
+        else tCls = 'note';
+        var daysCls = e.daysUntil <= 3 ? ' soon' : '';
+
+        var noteHTML = '';
+        if (e.note) {
+          noteHTML = '<div class="exam-item-note"><span>📝</span><span>' + esc(e.note) + '</span></div>';
+        }
+
+        html += '<div class="exam-item" data-key="' + e.dayKey + '">' +
+          '<div class="exam-item-top">' +
+            '<span class="exam-item-type ' + tCls + '">' + esc(e.type) + '</span>' +
+            '<span class="exam-item-days' + daysCls + '">' + daysUntilText(e.daysUntil) + '</span>' +
+          '</div>' +
+          '<div class="exam-item-subject">' + esc(e.subject) + '</div>' +
+          '<div class="exam-item-date">' + e.weekday + ', ' + e.dayLabel + ' · ' + esc(e.start) + '</div>' +
+          noteHTML +
+        '</div>';
+      }
+      examsList.innerHTML = html;
+      var items = examsList.querySelectorAll('.exam-item');
+      for (var k = 0; k < items.length; k++) {
+        (function (item) {
+          item.addEventListener('click', function () {
+            closeExamsModal();
+            jumpToDay(item.getAttribute('data-key'));
+          });
+        })(items[k]);
+      }
+    }
+
+    function openLinksModal() {
+      renderLinksList();
+      linksModalOverlay.classList.add('show');
+    }
+    function closeLinksModal() { linksModalOverlay.classList.remove('show'); }
+
+    function renderLinksList() {
+      if (!SUBJECTS || SUBJECTS.length === 0) {
+        linksList.innerHTML = '<div class="exams-empty">Ссылки не настроены</div>';
+        return;
+      }
+      var html = '';
+      for (var i = 0; i < SUBJECTS.length; i++) {
+        var s = SUBJECTS[i];
+        if (!s.name) continue;
+        var href = s.url || '#';
+        html += '<a class="link-item" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">' +
+          '<span class="link-item-name">' + esc(s.name) + '</span>' +
+          '<span class="link-item-arrow">›</span>' +
+        '</a>';
+      }
+      linksList.innerHTML = html;
+    }
+
+    nextBtn.addEventListener('click', nextDay);
+    prevBtn.addEventListener('click', prevDay);
+    examsBtn.addEventListener('click', function () { vib(8); openExamsModal(); });
+    linksBtn.addEventListener('click', function () { vib(8); openLinksModal(); });
+    document.getElementById('modalSaveBtn').addEventListener('click', saveNote);
+    document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
+    document.getElementById('modalDeleteBtn').addEventListener('click', deleteNote);
+    document.getElementById('examsCloseBtn').addEventListener('click', closeExamsModal);
+    document.getElementById('linksCloseBtn').addEventListener('click', closeLinksModal);
+
+    modalOverlay.addEventListener('click', function (e) {
+      if (e.target === modalOverlay) closeModal();
+    });
+    examsModalOverlay.addEventListener('click', function (e) {
+      if (e.target === examsModalOverlay) closeExamsModal();
+    });
+    linksModalOverlay.addEventListener('click', function (e) {
+      if (e.target === linksModalOverlay) closeLinksModal();
+    });
+    actionsModalOverlay.addEventListener('click', function (e) {
+      if (e.target === actionsModalOverlay) closeActionsModal();
+    });
+    moveModalOverlay.addEventListener('click', function (e) {
+      if (e.target === moveModalOverlay) closeMoveModal();
+    });
+
+    setInterval(function () {
+      if (days[currentIndex].key !== todayKey) return;
+      var nowM = nowMinutesFn();
+      var effective = getEffectivePairs(days[currentIndex].key);
+      var cards = contentEl.querySelectorAll('.card');
+      for (var k = 0; k < cards.length; k++) {
+        var card = cards[k];
+        var od = card.getAttribute('data-origdate');
+        var oi = parseInt(card.getAttribute('data-origidx'), 10);
+        var im = card.getAttribute('data-moved') === '1';
+        var p = null;
+        for (var e = 0; e < effective.length; e++) {
+          if (effective[e]._origDate === od && effective[e]._origIdx === oi && effective[e]._isMoved === im) {
+            p = effective[e];
+            break;
+          }
+        }
+        if (!p) continue;
+        var start = parseTime(p.start);
+        var end = parseTime(p.end);
+        card.classList.remove('past', 'current');
+        var pf = card.querySelector('.progress-fill');
+        if (nowM >= end) card.classList.add('past');
+        else if (nowM >= start && nowM < end) {
+          card.classList.add('current');
+          if (pf) pf.style.width = (((nowM - start) / (end - start)) * 100) + '%';
+        } else {
+          if (pf) pf.style.width = '0%';
+        }
+      }
+    }, 1000);
+
+    updateExamsBtn();
+    render();
+  } catch (e) {
+    showFatalError(e.message || e);
+  }
+})();
+</script>
+</body>
+</html>
